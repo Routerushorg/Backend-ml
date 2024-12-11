@@ -96,7 +96,7 @@ const optimizeRoute = async (addresses) => {
 const init = async () => {
     const server = Hapi.server({
         port: 3000,
-        host: 'localhost',
+        host: '0.0.0.0',
     });
 
     // Endpoint untuk memeriksa status server
