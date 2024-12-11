@@ -1,5 +1,5 @@
 # Use Node.js version 18 as the base image
-FROM node:18-alpine
+FROM node:22
 
 # Set the working directory
 WORKDIR /app
@@ -15,9 +15,6 @@ COPY . .
 
 # Expose the port the app runs on
 EXPOSE 3000
-
-# Define environment variables (if needed)
-ENV NODE_ENV=production
 
 # Start the application
 CMD ["npm", "start"]
