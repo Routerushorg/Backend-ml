@@ -1,23 +1,29 @@
 const Hapi = require('@hapi/hapi');
-const tf = require('@tensorflow/tfjs-node'); 
-const geolib = require('geolib'); 
+const tf = require('@tensorflow/tfjs-node');
+const geolib = require('geolib');
+const axios = require('axios');
 require('dotenv').config();
 
-let model; 
+let model;
 
+// Fungsi untuk memuat model TensorFlow dari URL
 const loadModel = async () => {
-    model = await tf.loadLayersModel('https://storage.googleapis.com/routerush-bucket/ml-model/model.json'); 
-    console.log('Model loaded successfully');
+    try {
+        model = await tf.loadGraphModel('https://storage.googleapis.com/ml-model-rr/model-prod/model.json');
+        console.log('Model loaded successfully');
+    } catch (error) {
+        console.error('Error loading model:', error.message);
+        throw error;
+    }
 };
 
-const axios = require('axios');
-
+// Fungsi untuk mengonversi alamat menjadi koordinat menggunakan API Geocoding Google Maps
 const geocodeAddress = async (address) => {
     const apiKey = process.env.GEOCODING_API_KEY;
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
     try {
-        const response = await axios.get(url); // Panggil API
+        const response = await axios.get(url);
         const data = response.data;
 
         if (data.status === 'OK') {
@@ -35,27 +41,55 @@ const geocodeAddress = async (address) => {
     }
 };
 
-
-// Fungsi untuk memproses input dan mengoptimalkan rute
+// Fungsi untuk memproses input dan mendapatkan prediksi model
 const optimizeRoute = async (addresses) => {
-    // 1. (Opsional) Ubah alamat menjadi koordinat jika model memerlukan koordinat
-    const coordinates = await Promise.all(
-        addresses.map(async (address) => await geocodeAddress(address))
-    );
+    try {
+        console.log('Starting optimization for addresses:', addresses);
 
-    // 2. Konversi koordinat ke tensor untuk model
-    const inputTensor = tf.tensor2d(coordinates.map(coord => [coord.latitude, coord.longitude]));
+        const coordinates = await Promise.all(
+            addresses.map(async (address) => {
+                const coords = await geocodeAddress(address);
+                console.log(`Coordinates for ${address}:`, coords);
+                return { ...coords, address };
+            })
+        );
 
-    // 3. Lakukan prediksi menggunakan model
-    const prediction = model.predict(inputTensor);
+        const startPoint = coordinates[0];
+        console.log('Start Point:', startPoint);
 
-    // 4. Ambil hasil prediksi dan tentukan urutan optimal
-    const optimizedIndices = prediction.arraySync().map((val, idx) => ({ idx, val }))
-        .sort((a, b) => a.val - b.val)
-        .map(item => item.idx);
+        const distances = coordinates.slice(1).map((coord, idx) => ({
+            index: idx + 1,
+            address: coord.address,
+            distance: geolib.getDistance(
+                { latitude: startPoint.latitude, longitude: startPoint.longitude },
+                { latitude: coord.latitude, longitude: coord.longitude }
+            ),
+        }));
 
-    // 5. Susun ulang alamat berdasarkan urutan optimal
-    return optimizedIndices.map(idx => addresses[idx]);
+        console.log('Sorted Distances:', distances);
+
+        const inputTensor = tf.tensor2d(coordinates.map(coord => [coord.latitude, coord.longitude, 0]));
+        console.log('Input Tensor Shape:', inputTensor.shape);
+
+        const prediction = model.predict(inputTensor);
+        const predictionArray = prediction.arraySync();
+        console.log('Prediction Array:', predictionArray);
+
+        distances.forEach((dist, idx) => {
+            dist.prediction = predictionArray[idx + 1][0];
+        });
+
+        const finalSorted = distances.sort((a, b) => a.distance - b.distance);
+        console.log('Final Sorted:', finalSorted);
+
+        const optimizedRoute = [startPoint.address, ...finalSorted.map(item => item.address)];
+        console.log('Optimized Route:', optimizedRoute);
+
+        return { optimizedRoute };
+    } catch (error) {
+        console.error('Error in optimizeRoute:', error.message);
+        throw error;
+    }
 };
 
 // Inisialisasi server
@@ -79,20 +113,24 @@ const init = async () => {
         method: 'POST',
         path: '/optimize-route',
         handler: async (request, h) => {
-            const { addresses } = request.payload; 
+            const { addresses } = request.payload;
             if (!addresses || !Array.isArray(addresses)) {
                 return h.response({ error: 'Invalid input. Provide an array of addresses.' }).code(400);
             }
 
-            const optimizedRoute = await optimizeRoute(addresses);
-            return { optimizedRoute };
+            try {
+                const result = await optimizeRoute(addresses);
+                return result;
+            } catch (error) {
+                console.error('Error in /optimize-route handler:', error.message);
+                return h.response({ error: 'Failed to optimize route', details: error.message }).code(500);
+            }
         },
     });
 
     await server.start();
     console.log('Server running on %s', server.info.uri);
 };
-
 
 loadModel().then(init).catch((err) => {
     console.error('Error starting server:', err);
