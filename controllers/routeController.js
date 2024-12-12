@@ -15,16 +15,18 @@ const optimizeRouteHandler = async (request, h) => {
 
     try {
         await verifyEmailInFirebase(email);
+
         const result = await optimizeRoute(email, addresses);
 
-        for (const address of addresses) {
-            await saveAddressHistory(email, address);
-        }
+        await Promise.all(addresses.map(address => saveAddressHistory(email, address)));
 
         return result;
     } catch (error) {
         console.error('Error optimizing route:', error.message);
-        return h.response({ error: 'Failed to optimize route', details: error.message }).code(500);
+        return h.response({
+            error: 'Failed to optimize route',
+            details: error.message || 'An unexpected error occurred',
+        }).code(500);
     }
 };
 

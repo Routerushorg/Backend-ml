@@ -9,14 +9,20 @@ const getAddressHistory = async (request, h) => {
 
     try {
         const history = await getAddressHistoryByEmail(email);
+
         if (history.length === 0) {
             return h.response({ message: `No history found for email: ${email}` }).code(404);
         }
+
         return { email, addresses: history };
     } catch (error) {
         console.error('Error fetching address history:', error.message);
-        return h.response({ error: 'Failed to fetch address history', details: error.message }).code(500);
+        return h.response({
+            error: 'Failed to fetch address history',
+            details: error.message || 'An unexpected error occurred',
+        }).code(500);
     }
 };
+
 
 module.exports = { getAddressHistory };
