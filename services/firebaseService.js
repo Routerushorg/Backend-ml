@@ -1,8 +1,10 @@
 const admin = require('firebase-admin');
+require('dotenv').config(); 
 
 admin.initializeApp({
-    credential: admin.credential.cert(require('../firebase-service-account.json')),
+    credential: admin.credential.cert(require(process.env.FIREBASE_PATH)),
 });
+
 
 const verifyEmailInFirebase = async (email) => {
     try {
