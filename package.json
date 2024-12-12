@@ -16,6 +16,8 @@
     "@tensorflow/tfjs-node": "^4.22.0",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
-    "geolib": "^3.3.4"
+    "firebase-admin": "^13.0.1",
+    "geolib": "^3.3.4",
+    "mysql2": "^3.11.5"
   }
 }
