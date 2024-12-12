@@ -1,13 +1,12 @@
 const axios = require('axios');
 
-/**
- * Fungsi untuk mengonversi alamat menjadi koordinat menggunakan API Geocoding Google Maps
- * @param {string} address - Alamat yang ingin dikonversi ke koordinat
- * @returns {Promise<Object>} - Objek koordinat { latitude, longitude }
- * @throws {Error} - Jika geocoding gagal
+/** 
+ * @param {string} address
+ * @returns {Promise<Object>}
+ * @throws {Error}
  */
 const geocodeAddress = async (address) => {
-    const apiKey = process.env.GEOCODING_API_KEY; // Pastikan key ada di .env file
+    const apiKey = process.env.GEOCODING_API_KEY;
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
     try {

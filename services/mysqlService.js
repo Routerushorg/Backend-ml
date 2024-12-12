@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 let dbConnection;
 
 const connectToDatabase = async () => {
-    if (dbConnection) return dbConnection; // Gunakan koneksi yang ada
+    if (dbConnection) return dbConnection;
     try {
         dbConnection = await mysql.createConnection({
             host: process.env.DB_HOST,
@@ -11,7 +11,7 @@ const connectToDatabase = async () => {
             database: process.env.DB_NAME,
         });
         console.log('Connected to MySQL database');
-        return dbConnection; // Kembalikan koneksi
+        return dbConnection;
     } catch (error) {
         console.error('Error connecting to MySQL database:', error.message);
         throw error;

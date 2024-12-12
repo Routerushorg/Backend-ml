@@ -13,13 +13,10 @@ const init = async () => {
         host: '0.0.0.0',
     });
 
-    // Tambahkan semua route
     server.route([...addressRoutes, ...routeRoutes]);
 
-    // Hubungkan ke database
     await connectToDatabase();
 
-    // Muat model TensorFlow
     await loadModel();
 
     await server.start();
